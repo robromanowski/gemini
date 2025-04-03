@@ -117,5 +117,7 @@ my_conda_output/
 * `shell=True`: Use the `--use-shell` flag only if required to overcome `Permission denied` errors during `conda` execution via `subprocess`, and be aware of the security implications.
 
 
+## Extra Misc
+![image](https://github.com/user-attachments/assets/a3949b23-d5bf-427e-a56c-0d7688828b0e)
 
 
