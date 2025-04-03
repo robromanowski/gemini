@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import argparse
 import subprocess
 import yaml # PyYAML library (pip install PyYAML)
