@@ -1,0 +1,6 @@
+export AD_SERVER='your_dc_hostname_or_ip'
+export AD_PORT='636' # Use 636 for LDAPS (secure)
+export AD_USE_SSL='true'
+export AD_BIND_USER='CN=YourServiceAccount,OU=ServiceAccounts,DC=yourdomain,DC=com' # Full DN of the service account
+export AD_BIND_PASSWORD='YourServiceAccountPassword'
+export AD_SEARCH_BASE='DC=yourdomain,DC=com' # Base DN to search for users
