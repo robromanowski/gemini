@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AD Group Lookup</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"] { width: calc(100% - 22px); padding: 10px; border: 1px solid #ccc; border-radius: 3px; margin-bottom: 10px; /* Added margin */ }
+        button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .results { margin-top: 20px; padding-top: 10px; border-top: 1px solid #eee; }
+        .results h2 { margin-top: 0; }
+        ul { list-style-type: disc; padding-left: 20px; /* Adjusted padding */ margin-left: 0; }
+        li { margin-bottom: 5px; /* Add spacing between items */ }
+        .flash { padding: 10px; margin-bottom: 15px; border-radius: 3px; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .flash.warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .flash.info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        /* Style for the filter input label */
+        label[for="groupFilterInput"] { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Active Directory Group Lookup</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/">
+            <div class="form-group">
+                <label for="username">Enter Username (sAMAccountName):</label>
+                <input type="text" id="username" name="username" value="{{ username_value }}" required>
+            </div>
+            <button type="submit">Lookup Groups</button>
+        </form>
+
+        {% if groups is not none %} {# Only show results section if groups were potentially found #}
+            <div class="results">
+                <h2>Direct Group Memberships for: {{ searched_user }}</h2>
+
+                {# Check if there are actual groups to display before showing filter #}
+                {% if groups %}
+                    <div class="form-group">
+                         {# Add the filter input field HERE #}
+                        <label for="groupFilterInput">Filter Groups:</label>
+                        <input type="text" id="groupFilterInput" placeholder="Type to filter...">
+                    </div>
+
+                    {# Add an ID to the UL element #}
+                    <ul id="groupList">
+                        {% for group in groups %}
+                            <li>{{ group }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>This user is not directly a member of any groups.</p>
+                {% endif %}
+            </div>
+        {% elif error_message and searched_user %} {# Display error if search failed #}
+             <div class="results">
+                <h2>Search Results for: {{ searched_user }}</h2>
+                <p style="color: red;">{{ error_message }}</p>
+             </div>
+        {% endif %}
+    </div>
+
+    {# Add the JavaScript HERE, before the closing body tag #}
+    <script>
+        // Wait for the HTML content to be fully loaded before running the script
+        document.addEventListener('DOMContentLoaded', (event) => {
+            // Get the filter input element, but only if it exists on the page
+            const filterInput = document.getElementById('groupFilterInput');
+
+            // Only add the event listener if the filter input was found
+            // (it only exists if groups were successfully displayed)
+            if (filterInput) {
+                filterInput.addEventListener('input', function() {
+                    // Get the current filter text, convert to lower case for case-insensitive matching
+                    const filterText = this.value.toLowerCase();
+
+                    // Get the list where groups are displayed
+                    const groupList = document.getElementById('groupList');
+
+                    // Get all the list items (each representing a group) within that list
+                    const listItems = groupList.getElementsByTagName('li');
+
+                    // Loop through each list item
+                    for (let i = 0; i < listItems.length; i++) {
+                        const item = listItems[i];
+                        // Get the text content of the list item (the group name)
+                        const itemText = item.textContent || item.innerText; // Handles browser differences
+
+                        // Convert group name to lower case
+                        const itemTextLower = itemText.toLowerCase();
+
+                        // Check if the group name includes the filter text
+                        if (itemTextLower.includes(filterText)) {
+                            // If it matches (or filter is empty), make sure it's visible
+                            item.style.display = ''; // Reset display to default (visible)
+                        } else {
+                            // If it doesn't match, hide it
+                            item.style.display = 'none';
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+
+</body>
+</html>
