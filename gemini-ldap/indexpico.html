@@ -1,0 +1,70 @@
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+    <title>AD Group Lookup</title>
+    <style>
+        /* Optional custom overrides */
+        :root { --pico-border-radius: 0.5rem; } /* Slightly rounder corners */
+        li { margin-bottom: 0.25rem; }
+    </style>
+</head>
+<body>
+    <main class="container"> {# Use main for semantic content #}
+        <h1><svg ...> AD Group Lookup</svg></h1> {# Add an icon maybe? #}
+
+        <article> {# Form card #}
+            <form method="POST" action="/">
+                <label for="username">
+                    Username (sAMAccountName)
+                    <input type="text" id="username" name="username" value="{{ username_value }}" required>
+                </label>
+                {# Add loading indicator container #}
+                <div id="loadingIndicator" style="display: none;" aria-busy="true">Loading groups...</div>
+                <button type="submit" id="submitButton">Lookup Groups</button>
+            </form>
+        </article>
+
+        {% if groups is not none or error_message %}
+            <article class="results"> {# Results card #}
+                 <h2>Results for: {{ searched_user }}</h2>
+                 <hr> {# Separator #}
+
+                 {% if groups %}
+                     <label for="groupFilterInput">
+                         Filter Groups (<span id="groupCount">{{ groups|length }}</span> found) {# Show count #}
+                         <input type="text" id="groupFilterInput" placeholder="Type to filter...">
+                         {# Add clear button optionally #}
+                     </label>
+                     <ul id="groupList">
+                        {% for group in groups %}
+                            <li>{{ group }}</li>
+                        {% endfor %}
+                     </ul>
+                 {% elif error_message %}
+                     <p><mark>{{ error_message }}</mark></p> {# Use mark for errors? #}
+                 {% else %}
+                      <p>User not directly member of any groups.</p>
+                 {% endif %}
+            </article>
+        {% endif %}
+    </main>
+    {# Add JavaScript for loading indicator, filter count etc. here #}
+    <script>
+        // Example JS for loading indicator
+        const form = document.querySelector('form');
+        const submitButton = document.getElementById('submitButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        if (form) {
+            form.addEventListener('submit', function() {
+                if (submitButton) submitButton.setAttribute('aria-busy', 'true'); // Pico loading state
+                if (loadingIndicator) loadingIndicator.style.display = 'block';
+                // Optional: Disable button explicitly if not using aria-busy styling
+                // if (submitButton) submitButton.disabled = true;
+            });
+        }
+        // Note: Hiding the indicator when page reloads is handled implicitly by the reload.
+        // If using AJAX, you'd hide it upon receiving the response.
+
+        // Add JS for filter count update within the filter listener
+    </script>
+</body>
