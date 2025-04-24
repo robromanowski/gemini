@@ -5,18 +5,22 @@ import os
 
 def parse_ansible_output(input_filepath, output_filepath):
     """
-    Parses Ansible output containing file listings and generates a CSV file.
+    Parses Ansible output containing file listings and generates a CSV file,
+    including the server name associated with each file/directory.
 
     Args:
         input_filepath (str): Path to the input file containing Ansible output.
         output_filepath (str): Path for the generated CSV file.
     """
 
+    # Regex to identify the server line (e.g., "servername.domain.com | STATUS | ...")
+    # Captures the server name part before the first space or pipe.
+    server_line_regex = re.compile(r"^([\w.-]+)\s*\|.*>>$")
+
     # Regex to find lines with file/dir listings (like ls -l output)
     # It looks for permissions, link count, owner, group, size, date parts, and filename.
     # It tries to robustly capture the filename at the end of the line.
     # Handles variations in date format (e.g., "Apr 24 14:42" or "Sep 20  2023")
-    # Skips the initial Ansible status line (e.g., "servername | CHANGED | ...")
     line_regex = re.compile(
         # Permissions (d or - followed by rwx-) and link count
         r"^[drwx-]{10}\s+\d+\s+"
@@ -43,6 +47,7 @@ def parse_ansible_output(input_filepath, output_filepath):
         )
 
     extracted_data = []
+    current_server = "UnknownServer" # Default if no server line found before first file
 
     print(f"Reading input file: {input_filepath}")
     try:
@@ -51,6 +56,13 @@ def parse_ansible_output(input_filepath, output_filepath):
                 line = line.strip()
                 if not line: # Skip empty lines
                     continue
+
+                # Check if the line contains a server name
+                server_match = server_line_regex.match(line)
+                if server_match:
+                    current_server = server_match.group(1)
+                    # print(f"Debug: Line {i+1}: Found server: '{current_server}'") # Optional Debugging
+                    continue # Move to the next line after finding a server
 
                 # Attempt to match the file/directory listing format
                 line_match = line_regex.match(line)
@@ -70,22 +82,21 @@ def parse_ansible_output(input_filepath, output_filepath):
                         path = f"/tech/appl/default/user/{user}"
 
                         # Standardize env_type (e.g., 'conda_envs' -> 'conda_env')
-                        # Use 'conda_env' if the raw type starts with 'conda_envs',
-                        # otherwise use the raw type.
                         env_type = "conda_env" if env_type_raw.lower().startswith("conda_envs") else env_type_raw
 
-                        # Add the parsed data to our list
+                        # Add the parsed data to our list, including the current server
                         extracted_data.append({
                             'path': path,
                             'user': user,
                             'env_type': env_type,
-                            'name': name
+                            'name': name,
+                            'server': current_server # Add the server name here
                         })
-                        # print(f"Debug: Line {i+1}: Parsed: path={path}, user={user}, env_type={env_type}, name={name}") # Optional Debugging
+                        # print(f"Debug: Line {i+1}: Parsed: path={path}, user={user}, env_type={env_type}, name={name}, server={current_server}") # Optional Debugging
                     # else: # Optional Debugging
                         # print(f"Debug: Line {i+1}: Filename '{filename}' did not match expected pattern.")
-                # else: # Optional Debugging
-                    # print(f"Debug: Line {i+1}: Skipping line (no file/dir match): '{line}'")
+                # else: # Optional Debugging (Lines that are neither server nor file listing)
+                    # print(f"Debug: Line {i+1}: Skipping line (no file/dir/server match): '{line}'")
 
 
     except FileNotFoundError:
@@ -109,8 +120,8 @@ def parse_ansible_output(input_filepath, output_filepath):
             print(f"Created output directory: {output_dir}")
 
         with open(output_filepath, 'w', newline='', encoding='utf-8') as outfile:
-            # Define the exact header order as requested
-            fieldnames = ['path', 'user', 'env_type', 'name']
+            # Define the exact header order as requested, including 'server'
+            fieldnames = ['path', 'user', 'env_type', 'name', 'server']
             writer = csv.DictWriter(outfile, fieldnames=fieldnames)
 
             # Write the header row
@@ -130,7 +141,7 @@ def parse_ansible_output(input_filepath, output_filepath):
 if __name__ == "__main__":
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser(
-        description="Parse Ansible file listing output (like ls -l) and generate a CSV file with structured data.",
+        description="Parse Ansible file listing output (like ls -l) and generate a CSV file with structured data, including server names.",
         formatter_class=argparse.RawTextHelpFormatter # Preserve formatting in help text
         )
 
