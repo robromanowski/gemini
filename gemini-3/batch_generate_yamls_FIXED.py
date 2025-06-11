@@ -294,7 +294,7 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
     parser.add_argument("search_paths", nargs='+', help="Base paths to search for conda environments.")
-    parser.add_argument("-o", "--output-dir", default="conda_forge_yamls_conditional", help="Main directory for final YAMLs and raw archives.")
+    parser.add_argument("-o", "--output-dir", default="conda_forge_yamls_conditional_v2", help="Main directory for final YAMLs and raw archives.")
     parser.add_argument("--conda-exe", default="conda", help="Path to conda executable.")
     parser.add_argument("--use-shell", action='store_true', help="Use shell=True for conda commands (USE WITH CAUTION!).")
     parser.add_argument("-v", "--verbose", action='store_const', dest='log_level', const=logging.DEBUG, default=logging.INFO, help="Enable verbose (DEBUG) logging.")
