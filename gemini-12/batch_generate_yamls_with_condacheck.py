@@ -9,7 +9,7 @@ from pathlib import Path
 from functools import partial
 import shutil # For shutil.which
 from datetime import datetime
-import csv
+import csv # <<< NEW IMPORT
 
 # --- Logging Setup ---
 log = logging.getLogger()
@@ -34,15 +34,14 @@ HISTORY_LENGTH_THRESHOLD = 50
 BUILD_STRING_RE = re.compile(r"=\w*h[0-9a-f]{7,}|=\w+_\d+$|=main$")
 
 # --- Helper Functions ---
+# (All helper functions remain the same)
 winOS = sys.platform == "win32"
 def path2str0(p: Path, win_os: bool = True): s = str(p) if win_os else p.as_posix(); return s
 path2str = partial(path2str0, win_os=winOS)
 
 def run_conda_command(conda_exe_path: str, args_list: list, env_path: Path = None, use_shell: bool = False):
     command = [str(conda_exe_path)] + args_list
-    if env_path and '--version' not in args_list:
-        command.extend(['-p', path2str(env_path)])
-    
+    if env_path: command.extend(['-p', path2str(env_path)])
     cmd_str_for_log = " ".join(command)
     cmd_exec = cmd_str_for_log if use_shell else command
     log.info(f"  Running: {cmd_str_for_log}")
@@ -55,6 +54,7 @@ def run_conda_command(conda_exe_path: str, args_list: list, env_path: Path = Non
     except Exception as e: log.error(f"  ERROR running command: {cmd_str_for_log}\n  Exception: {e}"); raise
 
 def get_pip_deps_from_export(export_yaml_data: dict) -> dict | None:
+    # ... (function remains the same)
     pip_deps_section = None
     if not isinstance(export_yaml_data, dict): return None
     dependencies = export_yaml_data.get("dependencies", [])
@@ -73,6 +73,7 @@ def get_pip_deps_from_export(export_yaml_data: dict) -> dict | None:
     return {'pip': cleaned_list}
 
 def parse_conda_list_export(export_output: str) -> list:
+    # ... (function remains the same)
     dependencies = []
     lines = export_output.strip().splitlines()
     for line in lines:
@@ -86,6 +87,7 @@ def parse_conda_list_export(export_output: str) -> list:
     return dependencies
 
 def is_history_output_good(hist_data: dict) -> tuple[bool, str]:
+    # ... (function remains the same)
     if not hist_data or 'dependencies' not in hist_data or not isinstance(hist_data['dependencies'], list):
         return False, "Invalid history format"
     dependencies = hist_data['dependencies']
@@ -99,6 +101,7 @@ def is_history_output_good(hist_data: dict) -> tuple[bool, str]:
     return True, "Clean"
 
 def save_raw_output(output_dir: Path, filename: str, content: str):
+    # ... (function remains the same)
     try:
         output_filepath = output_dir / filename; output_filepath.parent.mkdir(parents=True, exist_ok=True)
         with open(output_filepath, 'w') as f: f.write(content)
@@ -106,6 +109,7 @@ def save_raw_output(output_dir: Path, filename: str, content: str):
     except Exception as e: log.error(f"  ERROR saving raw output {output_filepath}. Error: {e}")
 
 def get_latest_mtime_in_dir(dir_path: Path) -> datetime | None:
+    # ... (function remains the same)
     latest_mtime = 0
     try:
         for root, _, files in os.walk(dir_path):
@@ -130,7 +134,7 @@ def get_creation_conda_version(history_file_path: Path) -> str:
     except Exception as e:
         log.debug(f"Could not read or parse history file {history_file_path}: {e}")
     return "Unknown"
-
+    
 def find_conda_environments(search_paths: list) -> list[tuple[Path, datetime | None, str]]:
     """Finds envs and returns their path, last modified date, and creation conda version."""
     env_data = []
@@ -152,36 +156,50 @@ def find_conda_environments(search_paths: list) -> list[tuple[Path, datetime | N
             dirs[:] = [d for d in dirs if d not in ['.git', '.svn', 'node_modules', '__pycache__', 'pkgs', 'pkgs_dirs', '.cache']]
     return env_data
 
+# --- Main Processing Function ---
 def process_environment(env_path: Path, output_dir_hist: Path, output_dir_fall: Path, archive_hist_dir: Path, archive_list_dir: Path, conda_exe: str, use_shell: bool, use_original_name: bool) -> dict:
+    # MODIFIED to return a dictionary with all recap info
     log.info(f"Processing environment: {env_path}")
     original_env_name = env_path.name
+    # Default result structure
     result = {
-        "env_name": original_env_name, "env_path": str(env_path), "current_conda_version": "N/A", "method": "N/A",
-        "status": "ERROR", "kept": 0, "filtered": 0, "filtered_list": "", "notes": ""
+        "env_name": original_env_name, "env_path": str(env_path), "method": "N/A",
+        "status": "ERROR", "kept": 0, "filtered": 0, "filtered_list": "",
+        "notes": ""
     }
     safe_filename_base = path2str(env_path).replace(os.path.sep, '_').strip('_')
-    
+
+    # <<< ADD THIS BLOCK TO GET CONDA VERSION >>>
     try:
+        # To get the version of conda that *manages* the env, we find the conda in its root prefix
         conda_in_env_path = env_path.parent.parent / "bin" / "conda"
-        if conda_in_env_path.exists(): version_output = run_conda_command(str(conda_in_env_path), ['--version'], use_shell=use_shell)
-        else: version_output = run_conda_command(conda_exe, ['--version'], use_shell=use_shell)
+        if conda_in_env_path.exists():
+            version_output = run_conda_command(str(conda_in_env_path), ['--version'], use_shell=use_shell)
+        else:
+            # Fallback to the provided conda executable if one isn't found in the env's root
+            version_output = run_conda_command(conda_exe, ['--version'], use_shell=use_shell)
+        
+        # Parse version: 'conda x.y.z'
         match = re.search(r'conda\s+([\d\.]+)', version_output)
-        if match: result['current_conda_version'] = match.group(1); log.info(f"  Found Current Conda Version: {result['current_conda_version']}")
+        if match:
+            result['conda_version'] = match.group(1)
+            log.info(f"  Found Conda Version: {result['conda_version']}")
     except Exception as e:
-        log.warning(f"  Could not determine current conda version. Error: {e}"); result['current_conda_version'] = "Unknown"
-    
+        log.warning(f"  Could not determine conda version for {env_path}. Error: {e}")
+        result['conda_version'] = "Unknown"
+    # <<< END OF NEW BLOCK >>>
     try:
         history_output = run_conda_command(conda_exe, ['env', 'export', '--from-history', '--no-builds'], env_path, use_shell)
         save_raw_output(archive_hist_dir, f"{safe_filename_base}_history.yml", history_output); hist_data = yaml.safe_load(history_output)
     except Exception as e:
-        log.error(f"  ERROR getting or parsing history. Error: {e}"); result['notes'] = f"Failed to get/parse history: {e}"; return result
+        log.error(f"  ERROR getting or parsing history for {env_path}. Error: {e}"); result['notes'] = f"Failed to get/parse history: {e}"; return result
 
     pip_section = None; notes_list = []
     try:
         nobuild_output = run_conda_command(conda_exe, ['env', 'export', '--no-builds'], env_path, use_shell)
         nobuild_data = yaml.safe_load(nobuild_output); pip_section = get_pip_deps_from_export(nobuild_data)
     except Exception as e:
-        log.warning(f"  WARNING: Failed to get/process pip deps. Error: {e}"); notes_list.append("Pip processing failed")
+        log.warning(f"  WARNING: Failed to get/process pip deps separately. Error: {e}"); notes_list.append("Pip processing failed")
 
     history_is_good, reason = is_history_output_good(hist_data)
     final_yaml_data = None
@@ -190,13 +208,14 @@ def process_environment(env_path: Path, output_dir_hist: Path, output_dir_fall: 
         result['method'] = "History"
         log.info(f"  Processing using good {result['method']} data.")
         try:
-            original_python_spec = None
-            dependencies_from_hist = hist_data.get('dependencies', [])
+            # (Method 1 logic...)
+            # ...
+            final_env_name = original_env_name if use_original_name else f"cf_hist_{original_env_name}"
+            # ... (Full logic for METHOD 1 as you provided, result is final_yaml_data)
+            original_python_spec = None; dependencies_from_hist = hist_data.get('dependencies', []); new_deps = []
             for dep in dependencies_from_hist:
-                if isinstance(dep, str) and (dep == 'python' or re.match(r"^python\s*(=|<|>|>=|<=|~=)", dep)):
-                    original_python_spec = dep; break
+                if isinstance(dep, str) and (dep == 'python' or re.match(r"^python\s*(=|<|>|>=|<=|~=)", dep)): original_python_spec = dep; break
             if not original_python_spec: log.warning(f"  Could not find Python in apparently good history for {env_path}.")
-            new_deps = []
             if original_python_spec: new_deps.append(original_python_spec)
             hist_dep_names = {d.split('=<>')[0].strip() for d in dependencies_from_hist if isinstance(d, str)}
             if "pip" not in hist_dep_names: new_deps.append("pip")
@@ -210,7 +229,6 @@ def process_environment(env_path: Path, output_dir_hist: Path, output_dir_fall: 
                 elif isinstance(dep, dict) and 'pip' in dep: continue
                 else: log.warning(f"  Keeping unexpected complex entry from good history: {dep}"); new_deps.append(dep)
             if pip_section: new_deps.append(pip_section)
-            final_env_name = original_env_name if use_original_name else f"cf_hist_{original_env_name}"
             final_yaml_data = {'name': final_env_name, 'channels': ['conda-forge'], 'dependencies': new_deps}
         except Exception as e:
             err_msg = f"ERROR processing good history: {e}"; log.error(f"  {err_msg}"); notes_list.append(err_msg)
@@ -218,6 +236,8 @@ def process_environment(env_path: Path, output_dir_hist: Path, output_dir_fall: 
         result['method'] = "Fallback"
         log.info(f"  Falling back to filtered 'conda list --export' method. Reason: {reason}")
         try:
+            # (Method 2 logic...)
+            # ...
             list_export_output = run_conda_command(conda_exe, ['list', '--export'], env_path, use_shell)
             save_raw_output(archive_list_dir, f"{safe_filename_base}_list_export.txt", list_export_output)
             dependencies_from_list = parse_conda_list_export(list_export_output)
@@ -257,12 +277,19 @@ def process_environment(env_path: Path, output_dir_hist: Path, output_dir_fall: 
     result['notes'] = "; ".join(notes_list)
     return result
 
+# --- <<< NEW FUNCTION FOR WRITING CSV >>> ---
 def write_summary_csv(results: list, output_filepath: Path):
-    if not results: log.info("No results to write to CSV."); return
+    """Writes the collected results to a CSV file."""
+    if not results:
+        log.info("No results to write to CSV.")
+        return
+    
+    # Define the headers for the CSV file
     fieldnames = [
         "env_name", "env_path", "last_modified", "creation_conda_version", "current_conda_version",
         "status", "method", "kept", "filtered", "notes", "filtered_list"
     ]
+    
     log.info(f"Writing summary to CSV file: {output_filepath}")
     try:
         with open(output_filepath, 'w', newline='', encoding='utf-8') as f:
@@ -270,10 +297,13 @@ def write_summary_csv(results: list, output_filepath: Path):
             writer.writeheader()
             writer.writerows(results)
         log.info("Successfully wrote CSV summary.")
-    except Exception as e: log.error(f"Failed to write CSV summary. Error: {e}")
+    except Exception as e:
+        log.error(f"Failed to write CSV summary. Error: {e}")
+
 
 # --- Main Execution Logic ---
 if __name__ == "__main__":
+    # (Argument parsing remains the same)
     parser = argparse.ArgumentParser(description="Batch generate conda environment YAMLs...", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("search_paths", nargs='+', help="Base paths to search for conda environments.")
     parser.add_argument("-o", "--output-dir", default="conda_forge_yamls_conditional", help="Main directory for final YAMLs and raw archives.")
@@ -285,12 +315,12 @@ if __name__ == "__main__":
     log.setLevel(args.log_level)
     log.info(f"All output is being logged to: {log_filename}")
 
+    # (Directory creation and conda executable resolution remain the same)
     output_dir_main = Path(args.output_dir).resolve(); output_dir_history_ok = output_dir_main / "from_history"; output_dir_fallback = output_dir_main / "from_fallback"; archive_dir_history = output_dir_main / "raw_history_outputs"; archive_dir_list = output_dir_main / "raw_list_export_outputs"
     try:
         output_dir_main.mkdir(parents=True, exist_ok=True); output_dir_history_ok.mkdir(parents=True, exist_ok=True); output_dir_fallback.mkdir(parents=True, exist_ok=True); archive_dir_history.mkdir(parents=True, exist_ok=True); archive_dir_list.mkdir(parents=True, exist_ok=True)
         log.info(f"Main output directory: {output_dir_main}"); log.info(f"  - Clean history YAMLs will be saved in: {output_dir_history_ok}"); log.info(f"  - Fallback method YAMLs will be saved in: {output_dir_fallback}"); log.info(f"Raw history archive: {archive_dir_history}"); log.info(f"Raw list export archive: {archive_dir_list}")
     except Exception as e: log.critical(f"Failed to create output directories under '{output_dir_main}'. Error: {e}"); sys.exit(1)
-    
     conda_exe_path = Path(args.conda_exe); resolved_path = shutil.which(args.conda_exe)
     if not conda_exe_path.is_file() and '/' not in args.conda_exe and '\\' not in args.conda_exe:
         if resolved_path: conda_exe_path = Path(resolved_path); log.info(f"Found conda executable via PATH: {conda_exe_path}")
@@ -305,7 +335,8 @@ if __name__ == "__main__":
 
     if found_envs_data:
         log.info("Starting environment processing...")
-        all_results = []
+        all_results = [] # <<< NEW: List to hold all result dictionaries
+
         found_envs_data.sort(key=lambda x: x[1] if x[1] else datetime.max)
 
         for env_path, last_modified, creation_conda_ver in found_envs_data:
@@ -328,11 +359,13 @@ if __name__ == "__main__":
                     "kept": 0, "filtered": 0, "filtered_list": "", "notes": str(e)
                 })
         
+        # --- Write Summary CSV File ---
         csv_path = output_dir_main / f"processing_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         write_summary_csv(all_results, csv_path)
 
+        # --- Print Final Console Summary ---
         log.info("\n\n" + "="*80); log.info("FINAL PROCESSING SUMMARY"); log.info("="*80)
-        total_envs = len(all_results); ok_count = sum(1 for r in all_results if r['status'] == "OK"); fallback_count = sum(1 for r in all_results if r['method'] == "Fallback"); history_ok_count = ok_count - fallback_count; error_count = total_envs - ok_count
+        total_envs = len(all_results); ok_count = sum(1 for r in all_results if r['status'] == "OK"); fallback_count = sum(1 for r in all_results if r['method'] == "Fallback"); history_ok_count = sum(1 for r in all_results if r['method'] == "History"); error_count = total_envs - ok_count
         log.info(f"Total Environments Processed: {total_envs}"); log.info(f"  Successfully Generated: {ok_count}"); log.info(f"  Errors / Not Generated: {error_count}"); log.info(f"  --- Breakdown of Successes ---"); log.info(f"    Processed via Clean History: {history_ok_count}"); log.info(f"    Processed via Fallback Method: {fallback_count}"); log.info(f"  Summary CSV created at: {csv_path}"); log.info("-"*80)
         
         log.info("Breakdown by Environment (Oldest first):")
@@ -340,7 +373,7 @@ if __name__ == "__main__":
             notes_str = f" | Notes: {r['notes']}" if r['notes'] else ""
             status_str = f"Status: {r['status']} ({r['method']})"
             log.info(f"  - Env: {r['env_path']}")
-            log.info(f"    - Last Mod: {r['last_modified']:<11} | Created With: {r['creation_conda_version']:<10} | Managed By: {r['current_conda_version']:<10} | {status_str}{notes_str}")
+            log.info(f"    - Last Modified: {r['last_modified']:<11} | Created With (Origianl Conda): {r['creation_conda_version']:<10} | Managed By (Current Conda): {r['current_conda_version']:<10} | {status_str}{notes_str}")
         
         if error_count > 0:
             log.info("\n--- Environments with Errors ---")
