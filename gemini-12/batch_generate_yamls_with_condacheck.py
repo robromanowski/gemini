@@ -122,7 +122,7 @@ def get_latest_mtime_in_dir(dir_path: Path) -> datetime | None:
         log.debug(f"Could not scan directory {dir_path} for mtime: {e}"); return None
     return datetime.fromtimestamp(latest_mtime) if latest_mtime > 0 else None
 
-def get_creation_conda_version(history_file_path: Path) -> str:
+def get_conda_version(history_file_path: Path) -> str:
     """Parses the conda-meta/history file to find the first conda version listed."""
     if not history_file_path.is_file():
         return "Unknown"
@@ -148,7 +148,7 @@ def find_conda_environments(search_paths: list) -> list[tuple[Path, datetime | N
                 if history_file.exists() and not (env_path / 'pkgs').is_dir():
                     log.info(f"  Found potential env: {env_path}")
                     last_modified = get_latest_mtime_in_dir(env_path)
-                    creation_conda_ver = get_creation_conda_version(history_file)
+                    creation_conda_ver = get_conda_version(history_file)
                     env_data.append((env_path, last_modified, creation_conda_ver))
                     dirs[:] = []
                 else:
@@ -286,7 +286,7 @@ def write_summary_csv(results: list, output_filepath: Path):
     
     # Define the headers for the CSV file
     fieldnames = [
-        "env_name", "env_path", "last_modified", "creation_conda_version", "current_conda_version",
+        "env_name", "env_path", "last_modified", "conda_version", "current_conda_version",
         "status", "method", "kept", "filtered", "notes", "filtered_list"
     ]
     
@@ -347,14 +347,14 @@ if __name__ == "__main__":
                     str(conda_exe_path), args.use_shell, args.use_original_name
                 )
                 result_dict['last_modified'] = last_modified.strftime('%Y-%m-%d') if last_modified else "Unknown"
-                result_dict['creation_conda_version'] = creation_conda_ver
+                result_dict['conda_version'] = creation_conda_ver
                 all_results.append(result_dict)
             except Exception as e:
                 log.error(f"CRITICAL ERROR processing {env_path}. Error: {e}")
                 all_results.append({
                     "env_name": env_path.name, "env_path": str(env_path), 
                     "last_modified": last_modified.strftime('%Y-%m-%d') if last_modified else "Unknown",
-                    "creation_conda_version": creation_conda_ver,
+                    "conda_version": creation_conda_ver,
                     "current_conda_version": "N/A", "status": "CRITICAL ERROR", "method": "N/A", 
                     "kept": 0, "filtered": 0, "filtered_list": "", "notes": str(e)
                 })
@@ -373,7 +373,7 @@ if __name__ == "__main__":
             notes_str = f" | Notes: {r['notes']}" if r['notes'] else ""
             status_str = f"Status: {r['status']} ({r['method']})"
             log.info(f"  - Env: {r['env_path']}")
-            log.info(f"    - Last Modified: {r['last_modified']:<11} | Created With (Origianl Conda): {r['creation_conda_version']:<10} | Managed By (Current Conda): {r['current_conda_version']:<10} | {status_str}{notes_str}")
+            log.info(f"    - Last Modified: {r['last_modified']:<11} | Created With (Origianl Conda): {r['conda_version']:<10} | Managed By (Current Conda): {r['current_conda_version']:<10} | {status_str}{notes_str}")
         
         if error_count > 0:
             log.info("\n--- Environments with Errors ---")
