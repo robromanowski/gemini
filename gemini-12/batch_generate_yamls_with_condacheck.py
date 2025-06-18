@@ -343,7 +343,7 @@ if __name__ == "__main__":
             try:
                 result_dict = process_environment(
                     env_path, output_dir_history_ok, output_dir_fallback,
-                    archive_dir_history, archive_list_dir,
+                    archive_dir_history, archive_dir_list,
                     str(conda_exe_path), args.use_shell, args.use_original_name
                 )
                 result_dict['last_modified'] = last_modified.strftime('%Y-%m-%d') if last_modified else "Unknown"
