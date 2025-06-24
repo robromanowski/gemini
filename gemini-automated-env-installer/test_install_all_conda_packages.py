@@ -90,10 +90,12 @@ def main():
         type=Path,
         help="Path to the text file containing a list of packages to test (one per line)."
     )
+    # --- MODIFIED ARGUMENT ---
     parser.add_argument(
-        "-n", "--env-name",
+        "-p", "--env-path",
         required=True,
-        help="Name of the clean conda environment to run tests in."
+        type=Path,
+        help="Full path to the clean conda environment to run tests in."
     )
     parser.add_argument(
         "--conda-exe",
@@ -121,7 +123,11 @@ def main():
         packages_to_test = [line.strip() for line in f if line.strip() and not line.startswith('#')]
     
     log.info(f"Found {len(packages_to_test)} packages to test in '{args.package_file.name}'.")
-    log.info(f"Using test environment: '{args.env_name}'")
+    log.info(f"Using test environment path: '{args.env_path}'")
+    
+    if not (args.env_path / 'conda-meta').is_dir():
+        log.critical(f"The provided environment path does not appear to be a valid conda environment: {args.env_path}")
+        sys.exit(1)
 
     results = []
     success_count = 0
@@ -130,10 +136,10 @@ def main():
     for i, package in enumerate(packages_to_test):
         log.info(f"--- Testing package {i+1}/{len(packages_to_test)}: {package} ---")
         
-        # 1. Install the package
+        # 1. Install the package using the full path (-p)
         install_command = [
             args.conda_exe, "install",
-            "-n", args.env_name,
+            "-p", str(args.env_path), # Using -p for explicit path
             "-c", "conda-forge",
             "-y", # Auto-confirm "yes"
             package
@@ -149,12 +155,10 @@ def main():
             log.info(f"  Cleaning up '{package}'...")
             uninstall_command = [
                 args.conda_exe, "uninstall",
-                "-n", args.env_name,
+                "-p", str(args.env_path), # Using -p for explicit path
                 "-y",
                 package
             ]
-            # We run uninstall but don't need to deeply check its success for the report,
-            # though the log will show an error if it fails.
             run_conda_command(uninstall_command)
 
         else:
