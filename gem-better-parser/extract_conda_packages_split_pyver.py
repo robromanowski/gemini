@@ -11,7 +11,9 @@ CONDA_IGNORE_LIST = {
     'setuptools',
     'wheel',
     'certifi',
-    'ca-certificates'
+    'ca-certificates',
+    'conda',
+    'anaconda'
 }
 
 def find_python_version(dependencies: list) -> str | None:
