@@ -31,7 +31,7 @@ This allows for more accurate, targeted validation of package availability (e.g.
 ## How to Run
 
 ```bash
-python extract_conda_packages.py <input_file> [options]
+python extract_conda_packages_split_pyver.py <input_file> [options]
 ```
 
 ### Input & Output Example
@@ -54,7 +54,7 @@ dependencies:
 ```
 
 Running the command:
-`python extract_conda_packages.py input.txt -o my_project_packages`
+`python extract_conda_packages_split_pyver.py input.txt -o my_project_packages`
 
 Will produce **two** output files:
 
@@ -79,7 +79,7 @@ Will produce **two** output files:
 
 ```bash
 # Process a file named 'all_envs.yml' and create output files like 'validation_list_py39.txt', 'validation_list_py310.txt', etc.
-python extract_conda_packages.py all_envs.yml -o validation_list
+python extract_conda_packages_split_pyver.py all_envs.yml -o validation_list
 ```
 
 
