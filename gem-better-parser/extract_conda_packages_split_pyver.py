@@ -1,6 +1,6 @@
 import argparse
 import yaml  # Requires PyYAML: pip install PyYAML
-import re
+import re    # <<< NEW IMPORT
 from pathlib import Path
 from collections import defaultdict
 
@@ -12,21 +12,20 @@ CONDA_IGNORE_LIST = {
     'wheel',
     'certifi',
     'ca-certificates',
-    'conda',
-    'anaconda'
+    'anaconda',
+    'conda'
 }
 
 def find_python_version(dependencies: list) -> str | None:
     """Scans dependency list and extracts the major.minor python version."""
     if not dependencies:
         return None
-    # Regex to find 'python' and capture the major.minor version (e.g., 3.9, 3.10)
     py_ver_re = re.compile(r"^python\s*=\s*(\d+\.\d+)")
     for item in dependencies:
         if isinstance(item, str):
             match = py_ver_re.match(item)
             if match:
-                return match.group(1) # e.g., "3.9"
+                return match.group(1)
     return None
 
 def extract_conda_packages(input_file: Path, output_prefix: str):
@@ -43,11 +42,8 @@ def extract_conda_packages(input_file: Path, output_prefix: str):
         print(f"ERROR: Input file not found at '{input_file}'")
         return
 
-    # A dictionary to hold sets of packages, keyed by Python version
-    # e.g., {"3.9": {"pandas", "numpy"}, "3.10": {"requests"}}
     packages_by_python = defaultdict(set)
 
-    # Split the content by 'name:' which typically starts a new YAML document
     env_yaml_chunks = filter(None, re.split(r'\n(?=name:)', content))
 
     doc_count = 0
@@ -64,31 +60,32 @@ def extract_conda_packages(input_file: Path, output_prefix: str):
             if not dependencies or not isinstance(dependencies, list):
                 continue
             
-            # --- NEW LOGIC: First, find the Python version for this env ---
             py_version = find_python_version(dependencies)
             if not py_version:
                 print(f"  Warning: No Python version found in document #{doc_count}. Skipping.")
                 continue
 
-            # --- Now, collect packages for this specific Python version ---
             for item in dependencies:
                 if isinstance(item, str):
-                    package_name = item.split('=')[0].strip()
-                    if package_name and package_name not in CONDA_IGNORE_LIST:
-                        packages_by_python[py_version].add(package_name)
-
+                    # --- MODIFIED: Use a regular expression for robust name extraction ---
+                    # This correctly handles "scikit-learn", "numpy=1.2", and "package[version='>1']"
+                    match = re.match(r"^[a-zA-Z0-9_-]+", item.strip())
+                    if match:
+                        package_name = match.group(0)
+                        if package_name and package_name not in CONDA_IGNORE_LIST:
+                            packages_by_python[py_version].add(package_name)
+                    # --- END OF MODIFICATION ---
+                            
         except yaml.YAMLError as e:
             print(f"  Warning: Could not parse a YAML document chunk #{doc_count}. Error: {e}")
 
     print(f"\nProcessed {doc_count} environment documents.")
     print(f"Found packages for {len(packages_by_python)} Python versions: {', '.join(sorted(packages_by_python.keys()))}")
 
-    # --- NEW LOGIC: Write a separate file for each Python version ---
     output_dir = Path(output_prefix).parent
-    output_dir.mkdir(parents=True, exist_ok=True) # Ensure output directory exists
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     for py_ver, package_set in packages_by_python.items():
-        # Sanitize version string for filename (e.g., "3.9" -> "py39")
         filename_suffix = f"_py{py_ver.replace('.', '')}.txt"
         output_filename = Path(output_prefix).name + filename_suffix
         output_path = output_dir / output_filename
