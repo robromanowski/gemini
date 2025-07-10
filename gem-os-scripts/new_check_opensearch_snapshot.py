@@ -19,21 +19,22 @@ def get_snapshot_status_basic_auth(opensearch_domain_endpoint, snapshot_reposito
         print(f"Response content: {e.response.text if e.response else 'N/A'}")
         return None
 
-# --- Re-Modified Function with more robust type checking ---
+# --- Re-Modified Function with MORE Debugging ---
 
 def analyze_snapshot_status(snapshot_data, snapshot_id):
     """
     Analyzes the snapshot data and provides detailed and summary information.
-    Handles 'indices' field being a dictionary or a list.
-    Adds type checking to prevent 'str' object has no attribute 'get' errors.
+    Includes extensive type checking and debug prints to diagnose 'str' object errors.
     """
     if not isinstance(snapshot_data, dict) or 'snapshots' not in snapshot_data or not snapshot_data['snapshots']:
-        print(f"Error: Invalid snapshot data format. Expected dictionary with 'snapshots' key. Received type: {type(snapshot_data)}")
+        print(f"DEBUG: analyze_snapshot_status: snapshot_data type is {type(snapshot_data)}. Expected dict.")
+        print(f"Error: Invalid snapshot data format or empty 'snapshots' list. Received type: {type(snapshot_data)}")
         if isinstance(snapshot_data, str):
             print(f"Received data (first 200 chars): {snapshot_data[:200]}...")
         return
 
     snapshot_info = snapshot_data['snapshots'][0]
+    print(f"DEBUG: analyze_snapshot_status: snapshot_info type is {type(snapshot_info)}")
     if not isinstance(snapshot_info, dict):
         print(f"Error: 'snapshots' list item is not a dictionary. Received type: {type(snapshot_info)}")
         if isinstance(snapshot_info, str):
@@ -44,8 +45,8 @@ def analyze_snapshot_status(snapshot_data, snapshot_id):
     start_time = snapshot_info.get('start_time_in_millis')
     end_time = snapshot_info.get('end_time_in_millis')
 
-    # Add type checking for 'shards'
     shards_data = snapshot_info.get('shards', {})
+    print(f"DEBUG: analyze_snapshot_status: shards_data type is {type(shards_data)}")
     if not isinstance(shards_data, dict):
         print(f"Warning: 'shards' data is not a dictionary. Defaulting to 0. Type: {type(shards_data)}")
         shards_total = 0
@@ -72,27 +73,28 @@ def analyze_snapshot_status(snapshot_data, snapshot_id):
 
     print("\n--- Index Details ---")
     raw_indices_info = snapshot_info.get('indices', {}) # Get the raw data, could be dict or list
+    print(f"DEBUG: analyze_snapshot_status: raw_indices_info type is {type(raw_indices_info)}")
     
-    # Normalize indices_info to always be a list of (name, data) tuples
     processed_indices = []
     if isinstance(raw_indices_info, dict):
         for index_name, index_data in raw_indices_info.items():
+            print(f"DEBUG: Processing index '{index_name}' (from dict). index_data type is {type(index_data)}")
             if not isinstance(index_data, dict):
-                print(f"Warning: Index '{index_name}' data is not a dictionary. Skipping. Type: {type(index_data)}")
-                continue # Skip this index if its data is malformed
+                print(f"Warning: Index '{index_name}' data is not a dictionary as expected (from dict). Skipping. Type: {type(index_data)}")
+                continue 
             processed_indices.append((index_name, index_data))
     elif isinstance(raw_indices_info, list):
         for index_data_item in raw_indices_info:
+            print(f"DEBUG: Processing index item (from list). index_data_item type is {type(index_data_item)}")
             if not isinstance(index_data_item, dict):
-                print(f"Warning: List item in 'indices' is not a dictionary. Skipping. Type: {type(index_data_item)}")
-                continue # Skip malformed list items
-            # Assuming if it's a list, each item is a dict containing 'index' name and other details
+                print(f"Warning: List item in 'indices' is not a dictionary as expected (from list). Skipping. Type: {type(index_data_item)}")
+                continue 
             index_name = index_data_item.get('index', 'UNKNOWN_INDEX')
             processed_indices.append((index_name, index_data_item))
     else:
         print(f"Error: 'indices' data is neither a dictionary nor a list. Type: {type(raw_indices_info)}")
         print("No index details can be processed.")
-        return # Exit if indices data is fundamentally wrong
+        return 
 
     if not processed_indices:
         print("No valid index details available in the snapshot information.")
@@ -103,16 +105,16 @@ def analyze_snapshot_status(snapshot_data, snapshot_id):
     failed_indices = 0
 
     for index_name, index_data in processed_indices: # Iterate over the normalized and validated list
-        # Add type checking for index_data before calling .get()
+        print(f"DEBUG: Final loop for index '{index_name}'. index_data type is {type(index_data)}")
         if not isinstance(index_data, dict):
-            print(f"Critical Error: Processed index '{index_name}' data is not a dictionary. Skipping. Type: {type(index_data)}")
-            failed_indices += 1 # Count it as failed for summary purposes
+            print(f"CRITICAL ERROR: Processed index '{index_name}' data is NOT a dictionary. THIS SHOULD NOT HAPPEN IF PREVIOUS CHECKS WORKED. Type: {type(index_data)}. Skipping.")
+            failed_indices += 1
             continue
 
         index_state = index_data.get('state', 'UNKNOWN')
         
-        # Add type checking for shards_data within index_data
         index_shards_data = index_data.get('shards', {})
+        print(f"DEBUG: Index '{index_name}' shards_data type is {type(index_shards_data)}")
         if not isinstance(index_shards_data, dict):
             print(f"Warning: Index '{index_name}' 'shards' data is not a dictionary. Defaulting to 0. Type: {type(index_shards_data)}")
             index_shards_total = 0
@@ -123,8 +125,8 @@ def analyze_snapshot_status(snapshot_data, snapshot_id):
             index_shards_successful = index_shards_data.get('successful', 0)
             index_shards_failed = index_shards_data.get('failed', 0)
             
-        # Add type checking for index_stats
         index_stats = index_data.get('stats', {})
+        print(f"DEBUG: Index '{index_name}' stats type is {type(index_stats)}")
         if not isinstance(index_stats, dict):
             print(f"Warning: Index '{index_name}' 'stats' data is not a dictionary. Defaulting to 0. Type: {type(index_stats)}")
             total_size = 0
@@ -173,7 +175,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Validate that username and password are provided either via args or environment variables
     if not args.username:
         parser.error("OpenSearch username not provided. Use --username or set OPENSEARCH_USERNAME environment variable.")
     if not args.password:
