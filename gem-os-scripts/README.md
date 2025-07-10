@@ -18,8 +18,9 @@ This Python script allows you to check the detailed status of a specific OpenSea
 * `requests` library: Used for making HTTP requests to the OpenSearch API.
 
     To install:
+  ```
     pip install requests
-
+  ```
 ## Configuration
 
 The script primarily relies on command-line arguments. However, for OpenSearch username and password, it can also fall back to environment variables for enhanced security and convenience.
