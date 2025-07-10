@@ -32,28 +32,36 @@ For secure handling of your OpenSearch credentials, it's highly recommended to s
 * `OPENSEARCH_PASSWORD`: Your OpenSearch master password.
 
 Example (Linux/macOS):
+```
 export OPENSEARCH_USERNAME="your_opensearch_user"
 export OPENSEARCH_PASSWORD="your_opensearch_password"
+```
 
 Example (Windows - Command Prompt):
+```
 set OPENSEARCH_USERNAME="your_opensearch_user"
 set OPENSEARCH_PASSWORD="your_opensearch_password"
+```
 
 Example (Windows - PowerShell):
+```
 $env:OPENSEARCH_USERNAME="your_opensearch_user"
 $env:OPENSEARCH_PASSWORD="your_opensearch_password"
+```
 
 ## Usage
 
 Run the script from your terminal, providing the necessary parameters.
 
 Example command:
+```
 python check_opensearch_snapshot.py \
   --endpoint "[https://search-your-domain-xyz.us-east-1.es.amazonaws.com](https://search-your-domain-xyz.us-east-1.es.amazonaws.com)" \
   --repository "my-snapshot-repo" \
   --snapshot-id "my-daily-snapshot-2023-10-27" \
   --username "your_opensearch_user" \
   --password "your_opensearch_password"
+```
 
 ### Command-line Arguments
 
@@ -72,29 +80,36 @@ Note: If `username` or `password` are not provided via command-line arguments, t
 1. Checking a Snapshot using Command-Line Arguments:
 
 Command:
+```
 python check_opensearch_snapshot.py \
   -e "[https://search-example.us-east-1.es.amazonaws.com](https://search-example.us-east-1.es.amazonaws.com)" \
   -r "opensearch-backups" \
   -s "weekly-snapshot-2025-07-07" \
   -u "admin" \
   -p "yourStrongPassword"
+```
 
 2. Checking a Snapshot using Environment Variables for Credentials:
 
 First, set your environment variables:
+```
 export OPENSEARCH_USERNAME="admin"
 export OPENSEARCH_PASSWORD="yourStrongPassword"
+```
 
 Then run the script:
+```
 python check_opensearch_snapshot.py \
   --endpoint "[https://search-example.us-east-1.es.amazonaws.com](https://search-example.us-east-1.es.amazonaws.com)" \
   --repository "opensearch-backups" \
   --snapshot-id "daily-snapshot-2025-07-09"
+```
 
 ### Expected Output Example (Snapshot In-Progress)
 
 Checking status for snapshot 'my_daily_snapshot-2023-10-27' in repository 'my-snapshot-repo'...
 
+```
 --- Snapshot Overview ---
 Snapshot ID: my_daily_snapshot-2023-10-27
 State: IN_PROGRESS
@@ -127,6 +142,7 @@ Completed Indices: 1
 Failed Indices: 0
 Pending/In-progress Indices: 3
 Indices Completion Percentage: 25.00%
+```
 
 The output will vary depending on the actual state of your snapshot (e.g., `SUCCESS`, `PARTIAL`, `FAILED`).
 
