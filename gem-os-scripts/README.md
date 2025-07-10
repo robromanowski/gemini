@@ -57,7 +57,7 @@ Run the script from your terminal, providing the necessary parameters.
 Example command:
 ```
 python check_opensearch_snapshot.py \
-  --endpoint "[https://search-your-domain-xyz.us-east-1.es.amazonaws.com](https://search-your-domain-xyz.us-east-1.es.amazonaws.com)" \
+  --endpoint "https://search-your-domain-xyz.us-east-1.es.amazonaws.com" \
   --repository "my-snapshot-repo" \
   --snapshot-id "my-daily-snapshot-2023-10-27" \
   --username "your_opensearch_user" \
@@ -83,7 +83,7 @@ Note: If `username` or `password` are not provided via command-line arguments, t
 Command:
 ```
 python check_opensearch_snapshot.py \
-  -e "[https://search-example.us-east-1.es.amazonaws.com](https://search-example.us-east-1.es.amazonaws.com)" \
+  -e "https://search-example.us-east-1.es.amazonaws.com" \
   -r "opensearch-backups" \
   -s "weekly-snapshot-2025-07-07" \
   -u "admin" \
@@ -101,7 +101,7 @@ export OPENSEARCH_PASSWORD="yourStrongPassword"
 Then run the script:
 ```
 python check_opensearch_snapshot.py \
-  --endpoint "[https://search-example.us-east-1.es.amazonaws.com](https://search-example.us-east-1.es.amazonaws.com)" \
+  --endpoint "https://search-example.us-east-1.es.amazonaws.com" \
   --repository "opensearch-backups" \
   --snapshot-id "daily-snapshot-2025-07-09"
 ```
