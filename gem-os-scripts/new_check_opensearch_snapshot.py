@@ -2,7 +2,7 @@ import requests
 import json
 import os
 import argparse
-import sys # Import sys for sys.stdout.flush()
+import sys
 
 # --- Functions (unchanged - get_snapshot_status_basic_auth) ---
 
@@ -13,25 +13,26 @@ def get_snapshot_status_basic_auth(opensearch_domain_endpoint, snapshot_reposito
     snapshot_url = f'{opensearch_domain_endpoint}/_snapshot/{snapshot_repository_name}/{snapshot_id}'
     try:
         response = requests.get(snapshot_url, auth=(username, password))
-        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
+        response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching snapshot status: {e}", file=sys.stderr) # Print to stderr for clarity
+        print(f"Error fetching snapshot status: {e}", file=sys.stderr)
         print(f"Response content: {e.response.text if e.response else 'N/A'}", file=sys.stderr)
         return None
 
-# --- Re-Modified Function with EXTREME Debugging ---
+# --- Simplified and Corrected analyze_snapshot_status function ---
 
 def analyze_snapshot_status(snapshot_data, snapshot_id):
     """
     Analyzes the snapshot data and provides detailed and summary information.
-    Includes EXTREME type checking and debug prints to diagnose 'str' object errors.
+    Specifically handles 'indices' field as a dictionary of index details.
     """
     print(f"DEBUG: START analyze_snapshot_status for snapshot ID: {snapshot_id}", flush=True)
 
     if not isinstance(snapshot_data, dict) or 'snapshots' not in snapshot_data or not snapshot_data['snapshots']:
-        print(f"DEBUG: snapshot_data type is {type(snapshot_data)}. Expected dict. Contents (first 200 chars): {str(snapshot_data)[:200]}", flush=True)
-        print(f"Error: Invalid snapshot data format or empty 'snapshots' list.", flush=True)
+        print(f"Error: Invalid snapshot data format. Expected dictionary with 'snapshots' key. Received type: {type(snapshot_data)}", flush=True)
+        if isinstance(snapshot_data, str):
+            print(f"Received data (first 200 chars): {snapshot_data[:200]}...", flush=True)
         return
 
     snapshot_info = snapshot_data['snapshots'][0]
@@ -41,26 +42,44 @@ def analyze_snapshot_status(snapshot_data, snapshot_id):
         return
 
     state = snapshot_info.get('state', 'UNKNOWN')
-    start_time = snapshot_info.get('start_time_in_millis')
-    end_time = snapshot_info.get('end_time_in_millis')
+    start_time = snapshot_info.get('stats', {}).get('start_time_in_millis') # Access via 'stats'
+    end_time = snapshot_info.get('stats', {}).get('time_in_millis') # This is actually 'time_in_millis' for duration
+    
+    # Calculate end_time if start_time and time_in_millis are present
+    formatted_end_time = None
+    if start_time is not None and end_time is not None:
+        actual_end_millis = start_time + end_time
+        # You might want to convert these millis timestamps to human-readable datetime
+        # Example: datetime.datetime.fromtimestamp(actual_end_millis / 1000).strftime('%Y-%m-%d %H:%M:%S')
+        formatted_end_time = f"{actual_end_millis} (calculated)"
+    else:
+        # If 'stats.time_in_millis' is not the snapshot end time, this needs adjustment based on actual API.
+        # Often, finished snapshots have a top-level 'end_time_in_millis' directly.
+        # Let's check for 'end_time_in_millis' at top level as well.
+        top_level_end_time = snapshot_info.get('end_time_in_millis')
+        if top_level_end_time:
+            formatted_end_time = top_level_end_time
+        elif end_time: # Use time_in_millis if it's the only end-time like field
+            formatted_end_time = end_time
 
-    shards_data = snapshot_info.get('shards', {})
-    print(f"DEBUG: shards_data type is {type(shards_data)}", flush=True)
-    if not isinstance(shards_data, dict):
-        print(f"Warning: 'shards' data is not a dictionary. Defaulting to 0. Type: {type(shards_data)}. Value: {str(shards_data)[:200]}...", flush=True)
+
+    shards_stats = snapshot_info.get('shards_stats', {}) # Corrected: 'shards_stats' at top level
+    print(f"DEBUG: shards_stats type is {type(shards_stats)}", flush=True)
+    if not isinstance(shards_stats, dict):
+        print(f"Warning: 'shards_stats' data is not a dictionary. Defaulting to 0. Type: {type(shards_stats)}. Value: {str(shards_stats)[:200]}...", flush=True)
         shards_total = 0
         shards_successful = 0
         shards_failed = 0
     else:
-        shards_total = shards_data.get('total', 0)
-        shards_successful = shards_data.get('successful', 0)
-        shards_failed = shards_data.get('failed', 0)
+        shards_total = shards_stats.get('total', 0)
+        shards_successful = shards_stats.get('done', 0) # 'done' for successful in shards_stats
+        shards_failed = shards_stats.get('failed', 0)
 
     print("\n--- Snapshot Overview ---", flush=True)
     print(f"Snapshot ID: {snapshot_id}", flush=True)
     print(f"State: {state}", flush=True)
     print(f"Start Time: {start_time}", flush=True)
-    print(f"End Time: {end_time}", flush=True)
+    print(f"End Time (calculated/actual): {formatted_end_time}", flush=True) # Use the formatted end time
     print(f"Total Shards: {shards_total}", flush=True)
     print(f"Successful Shards: {shards_successful}", flush=True)
     print(f"Failed Shards: {shards_failed}", flush=True)
@@ -71,80 +90,53 @@ def analyze_snapshot_status(snapshot_data, snapshot_id):
     print(f"Overall Progress: {overall_percentage:.2f}%", flush=True)
 
     print("\n--- Index Details ---", flush=True)
-    raw_indices_info = snapshot_info.get('indices', {}) # Get the raw data, could be dict or list
+    raw_indices_info = snapshot_info.get('indices', {})
     print(f"DEBUG: raw_indices_info type is {type(raw_indices_info)}", flush=True)
     
-    processed_indices = []
-    if isinstance(raw_indices_info, dict):
-        print("DEBUG: Processing 'indices' as a dictionary.", flush=True)
-        for index_name, index_data in raw_indices_info.items():
-            print(f"DEBUG:   Current index_name from dict: '{index_name}'. index_data type: {type(index_data)}", flush=True)
-            if not isinstance(index_data, dict):
-                print(f"Warning: Index '{index_name}' data is not a dictionary as expected (from dict). Skipping. Type: {type(index_data)}. Value: {str(index_data)[:200]}...", flush=True)
-                continue 
-            processed_indices.append((index_name, index_data))
-    elif isinstance(raw_indices_info, list):
-        print("DEBUG: Processing 'indices' as a list.", flush=True)
-        # NUCLEAR DEBUGGING: Print the entire raw_indices_info if it's a list
-        print(f"DEBUG: Full raw_indices_info (as list) for inspection: {json.dumps(raw_indices_info, indent=2)}", flush=True)
-
-        for i, index_data_item in enumerate(raw_indices_info):
-            print(f"DEBUG:   Processing list item {i}.", flush=True)
-            print(f"DEBUG:     index_data_item before check: type={type(index_data_item)}, repr={repr(index_data_item)[:200]}", flush=True)
-
-            if not isinstance(index_data_item, dict):
-                print(f"CRITICAL WARNING: List item {i} in 'indices' is NOT a dictionary. Type: {type(index_data_item)}. Value: {str(index_data_item)[:200]}...", flush=True)
-                # This 'continue' should prevent the AttributeError if it's a string
-                continue
-            
-            # --- THE EXACT LINE REPORTED IN TRACEBACK ---
-            try:
-                # Ensure we are using 'index', not 'ndex' if that was a local typo.
-                # The traceback you provided said 'ndex', please double-check your local file.
-                index_name = index_data_item.get('index', 'UNKNOWN_INDEX_NAME') 
-                print(f"DEBUG:     Successfully got index name: '{index_name}'", flush=True)
-            except AttributeError as e:
-                print(f"CRITICAL ERROR: Encountered AttributeError on item {i} trying to get 'index' property. "
-                      f"Expected dict, but object is type {type(index_data_item)}. Error: {e}. "
-                      f"Value (repr): {repr(index_data_item)[:200]}", file=sys.stderr, flush=True)
-                failed_indices += 1 
-                continue 
-
-            processed_indices.append((index_name, index_data_item))
-    else:
-        print(f"Error: 'indices' data is neither a dictionary nor a list. Type: {type(raw_indices_info)}. Value: {str(raw_indices_info)[:200]}...", flush=True)
+    # Based on your Dev Tools output, 'indices' is a dictionary of dictionaries
+    if not isinstance(raw_indices_info, dict):
+        print(f"Error: 'indices' data is not a dictionary as expected for detailed analysis. Type: {type(raw_indices_info)}. Value: {str(raw_indices_info)[:200]}...", flush=True)
         print("No index details can be processed.", flush=True)
         return
 
-    if not processed_indices:
-        print("No valid index details available in the snapshot information.", flush=True)
-        return
-
-    total_indices = len(processed_indices)
+    total_indices = len(raw_indices_info)
     completed_indices = 0
-    failed_indices = 0 
+    failed_indices = 0
 
-    for index_name, index_data in processed_indices:
-        print(f"DEBUG: Final loop processing index '{index_name}'. index_data type: {type(index_data)}", flush=True)
+    for index_name, index_data in raw_indices_info.items():
+        print(f"DEBUG: Processing index '{index_name}'. index_data type: {type(index_data)}", flush=True)
         if not isinstance(index_data, dict):
-            print(f"CRITICAL ERROR: Processed index '{index_name}' data is NOT a dictionary after normalization. Type: {type(index_data)}. Value: {str(index_data)[:200]}...", flush=True)
-            failed_indices += 1
+            print(f"Warning: Index '{index_name}' data is not a dictionary. Skipping details for this index. Type: {type(index_data)}. Value: {str(index_data)[:200]}...", flush=True)
+            # We skip detailed processing for this malformed index, but still count it
+            failed_indices += 1 # Or just count it as 'unparseable'
             continue
 
-        index_state = index_data.get('state', 'UNKNOWN')
+        # For index state, we often infer SUCCESS if shards are all done.
+        # OpenSearch 1.x / Elasticsearch 7.x snapshot status doesn't always have a top-level 'state' per index.
+        # We can derive it from shards_stats.
+        index_shards_stats = index_data.get('shards_stats', {})
         
-        index_shards_data = index_data.get('shards', {})
-        print(f"DEBUG:   Index '{index_name}' shards_data type: {type(index_shards_data)}", flush=True)
-        if not isinstance(index_shards_data, dict):
-            print(f"Warning: Index '{index_name}' 'shards' data is not a dictionary. Defaulting to 0. Type: {type(index_shards_data)}. Value: {str(index_shards_data)[:200]}...", flush=True)
+        # Check if index_shards_stats is a dictionary before getting keys
+        if not isinstance(index_shards_stats, dict):
+            print(f"Warning: Index '{index_name}' 'shards_stats' data is not a dictionary. Skipping detailed shard analysis. Type: {type(index_shards_stats)}", flush=True)
+            index_state = "UNKNOWN_SHARDS_INFO"
             index_shards_total = 0
             index_shards_successful = 0
             index_shards_failed = 0
         else:
-            index_shards_total = index_shards_data.get('total', 0)
-            index_shards_successful = index_shards_data.get('successful', 0)
-            index_shards_failed = index_shards_data.get('failed', 0)
-            
+            index_shards_total = index_shards_stats.get('total', 0)
+            index_shards_successful = index_shards_stats.get('done', 0) # 'done' for successful
+            index_shards_failed = index_shards_stats.get('failed', 0)
+
+            if index_shards_total > 0 and index_shards_successful == index_shards_total and index_shards_failed == 0:
+                index_state = "SUCCESS"
+            elif index_shards_failed > 0:
+                index_state = "FAILED"
+            elif index_shards_total > 0 and index_shards_successful < index_shards_total:
+                index_state = "IN_PROGRESS"
+            else:
+                index_state = "UNKNOWN"
+
         index_stats = index_data.get('stats', {})
         print(f"DEBUG:   Index '{index_name}' stats type: {type(index_stats)}", flush=True)
         if not isinstance(index_stats, dict):
@@ -152,14 +144,16 @@ def analyze_snapshot_status(snapshot_data, snapshot_id):
             total_size = 0
             total_docs = 0
         else:
-            total_size = index_stats.get('size_in_bytes', 0)
-            total_docs = index_stats.get('number_of_documents', 0)
+            total_size = index_stats.get('total', {}).get('size_in_bytes', 0) # stats.total.size_in_bytes
+            # OpenSearch 1.x / Elasticsearch 7.x snapshot status doesn't typically report number_of_documents here.
+            # This would usually come from a _cat/indices API.
+            total_docs = "N/A" # Default to N/A as it's not in snapshot status
 
         print(f"\nIndex: {index_name}", flush=True)
         print(f"  State: {index_state}", flush=True)
         print(f"  Shards (Total/Successful/Failed): {index_shards_total}/{index_shards_successful}/{index_shards_failed}", flush=True)
         print(f"  Total Size: {total_size / (1024*1024):.2f} MB", flush=True)
-        print(f"  Total Documents: {total_docs}", flush=True)
+        print(f"  Total Documents: {total_docs}", flush=True) # Will be N/A
 
         if index_state == 'SUCCESS':
             completed_indices += 1
