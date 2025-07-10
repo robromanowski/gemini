@@ -3,7 +3,7 @@ import json
 import os
 import argparse
 
-# --- Functions (remain largely the same) ---
+# --- Functions (unchanged - get_snapshot_status_basic_auth) ---
 
 def get_snapshot_status_basic_auth(opensearch_domain_endpoint, snapshot_repository_name, snapshot_id, username, password):
     """
@@ -19,9 +19,12 @@ def get_snapshot_status_basic_auth(opensearch_domain_endpoint, snapshot_reposito
         print(f"Response content: {e.response.text if e.response else 'N/A'}")
         return None
 
+# --- Modified Function ---
+
 def analyze_snapshot_status(snapshot_data, snapshot_id):
     """
     Analyzes the snapshot data and provides detailed and summary information.
+    Handles 'indices' field being a dictionary or a list.
     """
     if not snapshot_data or 'snapshots' not in snapshot_data or not snapshot_data['snapshots']:
         print("No snapshot data found or snapshot ID might be incorrect.")
@@ -50,16 +53,29 @@ def analyze_snapshot_status(snapshot_data, snapshot_id):
     print(f"Overall Progress: {overall_percentage:.2f}%")
 
     print("\n--- Index Details ---")
-    indices_info = snapshot_info.get('indices', {})
-    if not indices_info:
+    raw_indices_info = snapshot_info.get('indices', {}) # Get the raw data, could be dict or list
+    
+    # Normalize indices_info to always be a list of (name, data) tuples
+    processed_indices = []
+    if isinstance(raw_indices_info, dict):
+        for index_name, index_data in raw_indices_info.items():
+            processed_indices.append((index_name, index_data))
+    elif isinstance(raw_indices_info, list):
+        for index_data_item in raw_indices_info:
+            # Assuming if it's a list, each item is a dict containing 'index' name and other details
+            # This is a common format for lists of indices.
+            index_name = index_data_item.get('index', 'UNKNOWN_INDEX')
+            processed_indices.append((index_name, index_data_item))
+    
+    if not processed_indices:
         print("No index details available in the snapshot information.")
         return
 
-    total_indices = len(indices_info)
+    total_indices = len(processed_indices)
     completed_indices = 0
     failed_indices = 0
 
-    for index_name, index_data in indices_info.items():
+    for index_name, index_data in processed_indices: # Now iterate over the normalized list
         index_state = index_data.get('state', 'UNKNOWN')
         index_shards_total = index_data.get('shards', {}).get('total', 0)
         index_shards_successful = index_data.get('shards', {}).get('successful', 0)
@@ -92,7 +108,7 @@ def analyze_snapshot_status(snapshot_data, snapshot_id):
         print("Indices Completion Percentage: N/A (No indices found)")
 
 
-# --- Main Execution ---
+# --- Main Execution (unchanged) ---
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Check AWS OpenSearch snapshot status with basic authentication.")
 
