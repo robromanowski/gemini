@@ -1,0 +1,11 @@
+_conda_isolation_hook() {
+    if [ -n "$CONDA_PREFIX" ] && [ "$CONDA_DEFAULT_ENV" != "base" ]; then
+        # We are in a Conda env (and not base, if you want to allow base to see local)
+        export PYTHONNOUSERSITE=1
+    else
+        # We are not in a Conda env (or we are in base)
+        unset PYTHONNOUSERSITE
+    fi
+}
+
+export PROMPT_COMMAND="_conda_isolation_hook;$PROMPT_COMMAND"
