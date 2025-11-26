@@ -1,0 +1,81 @@
+Part A: Results
+
+Reflect on the results you accomplished over the past year. Focus on the goals you set, the work you delivered, and how your contributions supported team or business priorities.
+
+Conda-Forge Migration & Platform Cleanup This was my most significant and complex deliverable of the year, occupying a majority of my bandwidth due to its scale and risk profile. The project involved a complete overhaul of the ACE platform (spanning 30-40 servers) to mitigate a severe legal and financial risk regarding Anaconda licensing.
+
+    Execution: I started by developing custom scanning scripts to identify every single Conda environment across the platform. I organized this data into detailed inventory spreadsheets to track ownership by Line of Business (LOB). I then partnered with engineering to write the master rebuilding script that converted environments to use compliant packages.
+
+    Coordination: To prevent outages, I orchestrated a "waved" rollout, scheduling specific weeks for each LOB to migrate individually.
+
+    Cleanup: As part of this effort, I identified and deleted nearly 1,000 unused environments, cleaning the system of old "defaults repo" dependencies and reclaiming significant storage space.
+
+    How this met Goal #1 (Conda-Forge Overhaul): I met and exceeded this goal by fully inventorying and rebuilding the entire platform's environment landscape. We are now 100% compliant, ensuring we avoided a costly legal affair, and the platform is leaner and more organized than when the year began.
+
+Nexus Secure Package Configuration A crucial sub-project that allowed the overall Conda migration to succeed was architecting the secure package flow. We needed to ensure that our new Conda-forge packages were not being pulled directly from the public internet, which would violate security protocols.
+
+    Execution: I worked cross-functionally with the Nexus and Security teams to configure a proxy solution. I successfully set up our internal Nexus to scan and vet packages from Conda-forge, and then engineered a global configuration so that every server on our platform automatically routes requests through this secure internal proxy.
+
+    How this met my goals: While not originally a standalone written goal, this was the critical technical prerequisite for Goal #1. Without this secure architecture, the migration would have failed security audits. It transformed our package management from a public-facing risk to a secure, internal service.
+
+OpenSearch Disaster Recovery (DR) Implementation As part of the company-wide initiative to ensure every application is DR compliant, I volunteered as an early adopter for OpenSearch. My objective was to prove we could survive a regional outage well before the End-of-Year deadline.
+
+    Execution: This required building a duplicate OpenSearch cluster in the us-east-2 region. I utilized our newly developed snapshot capabilities to replicate data into a cross-region bucket, restored that data onto the new cluster, and coordinated with customers to validate that the data was identical and functional.
+
+    Outcome: I led the final review, demoing the entire solution to stakeholders. The failover worked flawlessly, and we were approved as compliant.
+
+    How this met Goal #4 (OpenSearch Snapshot/Backup): This initiative served as the "final exam" for the snapshot solution I built. By successfully restoring production data in a different region, I proved that the snapshot feature was not just functional, but robust enough to serve as our primary Disaster Recovery mechanism.
+
+AI-Driven Development & Automation I made a strategic pivot this year to master the use of AI in my development workflow. This significantly reduced the time required for scripting and allowed me to deliver tools that would have otherwise been too resource-intensive to build.
+
+    Key Deliverables:
+
+        Platform Monitoring Dashboard: I built a comprehensive status interface that acts as a "health check" for the platform. It automatically attempts SSH logins and curls web URLs (Jupyter, RStudio, etc.) for every server, presenting the results in a slick UI with red/green status indicators.
+
+        Operational Scripts: I developed automated scripts for scanning Conda environments, managing backups, and recovering Pip packages.
+
+        Issue Resolution: I moved away from manual StackOverflow research and utilized AI to troubleshoot complex Git and package dependency issues, drastically reducing my "Time to Resolution" for bugs.
+
+    How this met Goal #2 (AI Usage Enhancements): I achieved this goal by integrating AI into the core of my daily work. It is no longer just a concept but a tool I use to write system admin scripts faster and enhance the customer experience (CX) via better monitoring tools.
+
+Infrastructure as Code (Terraform) & Jenkins To support the OpenSearch snapshot project, I committed to learning and implementing "Infrastructure as Code."
+
+    Execution: I moved beyond basic tutorials and utilized Terraform extensively to manage the OpenSearch infrastructure. I set up dedicated workspaces and variable files to handle the creation of complex IAM roles and Lambda permissions. To ensure this wasn't a manual process, I learned Jenkins and built a pipeline that triggers the Terraform jobs automatically.
+
+    How this met Goal #3 (Increase Terraform Skills): I met this goal by delivering a production-grade infrastructure pipeline. I am now fully comfortable setting up Terraform workspaces and integrating them with Jenkins to drive automated deployments, a skillset I did not possess at the start of the year.
+
+OpenSearch Snapshot & Restore Solution Previously, moving customer data or creating backups was a timely, manual process involving "re-indexing," which was slow and prone to errors. I focused on enabling the native Snapshot feature to modernize this capability.
+
+    Execution: I overcame significant technical hurdles regarding permissions and storage to get the native snapshot feature fully operational. This capability now allows us to take a "point-in-time" picture of a cluster and restore it rapidly.
+
+    Impact: Our customers (such as Quantexa) loved this improvement. It allows us to move their massive datasets between clusters much faster than before. It also gave us a new capability: backing up specific data before an upgrade to ensure we have a safe revert point.
+
+    How this met Goal #4 (OpenSearch Snapshot/Backup): This directly fulfilled the goal of "getting the native feature working." We moved from a hacky, slow re-indexing process to a standard, fast, and safe enterprise backup solution.
+
+OpenSearch Snapshot Automation Once the snapshot feature was working, the next logical step was ensuring it ran without human intervention.
+
+    Execution: I researched OpenSearch's native automation capabilities to avoid building a fragile custom script. I successfully configured the internal scheduler to manage the lifecycle of our backups.
+
+    Outcome: The system now autonomously executes weekly and monthly snapshots for our critical customers. It has already been used multiple times to recover data, working perfectly on every occasion.
+
+    How this met Goal #5 (Snapshot Automation): I met this goal by delivering a "set it and forget it" solution. By using native features rather than custom code, I ensured the solution is robust, maintainable, and reliable for the long term.
+
+Part B: Behaviors
+
+Reflect on how you demonstrated The Hartford Behaviors in your work this year. Consider how your actions supported our values, culture, and a positive work environment.
+
+1. Customer First We prioritize our customers by building trust, collaborating, and actively listening to meet their needs.
+
+I demonstrated this behavior most visibly during the critical Conda-forge migration. Recognizing that a forced, platform-wide update could disrupt business-critical workflows, I adopted a customer-centric "waved" scheduling approach. I actively listened to the needs of the LOB leads, scheduling their migrations individually around their specific deadlines and busy periods to ensure zero unplanned downtime. Furthermore, regarding the OpenSearch snapshot initiative, I prioritized the customer's need for efficiency over simple compliance. I worked to deliver a solution that didn't just back up data, but allowed key customers (like Quantexa) to migrate massive datasets between clusters significantly faster than the previous re-indexing method. By focusing on their friction points, I turned a backend maintenance task into a tangible service improvement for the user.
+
+2. Own It With Pace We act promptly and decisively to address challenges and seize opportunities.
+
+I exemplified this behavior by taking immediate ownership of the OpenSearch Disaster Recovery (DR) initiative. Rather than waiting for the End-of-Year deadline to approach, I volunteered as an early adopter to set the pace for the wider team. I moved decisively to tackle the technical learning curve of rebuilding our clusters in a new region (us-east-2) and configuring the necessary cross-region permissions. By attacking this challenge early and aggressively, I was able to demo a fully compliant, working failover solution months ahead of schedule. My proactive approach de-risked the project for the department and provided a proven blueprint for others to follow, ensuring we met our compliance targets without a last-minute rush.
+
+3. Solve It With Innovation We challenge the status quo and are willing to take risks that lead to innovations.
+
+I challenged the traditional methods of system administration by integrating AI into my daily development workflow. Instead of relying on manual research and standard debugging methods, I leveraged AI to drastically accelerate the creation of complex scripts, such as the new Platform Monitoring Dashboard. This innovation provided the team with real-time visibility (SSH/URL health) that we never had before. Additionally, I applied this mindset to the OpenSearch automation project. Instead of settling for a "hacky" custom script to manage backups, I researched and implemented the native automated snapshot features. This risk to learn and implement a new, native method resulted in a far more robust, "self-driving" solution that requires less long-term maintenance than the status quo.
+
+4. Live It As One Hartford We work collaboratively to drive outcomes for the company.
+
+The Conda-forge migration was a massive logistical undertaking that could not have been achieved in silos. I demonstrated this behavior by fostering deep collaboration across multiple teams to drive a unified outcome. I partnered closely with the Nexus and Security teams to architect the internal proxy solution, ensuring our compliance goals were met without hindering developer velocity. I also maintained transparent communication with fellow engineers and business stakeholders through detailed inventory tracking and status updates. By acting as the central coordinator—bridging the gap between technical execution and business requirements—I ensured that we moved forward as a cohesive unit to resolve a major legal liability for the company.
