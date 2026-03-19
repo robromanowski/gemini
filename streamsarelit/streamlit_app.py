@@ -137,6 +137,7 @@ sort_field = sort_options[sort_label]
 
 # ── Filter data ───────────────────────────────────────────────
 df = df_all[~df_all["region"].str.contains("Tailwater", na=False)].copy()
+df = df[~((df["stream_name"] == "Tellico River") & (df["data_source"] == "TWRA Stocking Program"))]
 
 if species_filter:
     df = df[df["species"].apply(lambda s: any(sp in str(s) for sp in species_filter))]
