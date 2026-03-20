@@ -1,6 +1,6 @@
 # Trout Stream Data Explorer — Architecture Walkthrough
 
-A high-level narrative of how the app is built, from raw data to deployed app.
+TL;DR ish of TSDE
 
 ---
 
